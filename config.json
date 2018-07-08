@@ -1,0 +1,12 @@
+{
+	"show_video": true,
+	"min_upload_seconds": 3.0,
+	"min_motion_frames": 8,
+	"camera_warmup_time": 2.5,
+	"delta_thresh": 5,
+	"downscale_width": 500,
+	"resolution": [1920, 1080],
+	"fps": 16,
+	"min_area": 5000,
+	"allowed_devices" : ["04:B1:67:09:58:D1", "0C:98:38:00:60:B0"]
+}
