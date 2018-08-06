@@ -12,8 +12,8 @@ import cv2
 import logging
 from threading import Thread
 from bluetooth import discover_devices
-from .includes.Motor import Motor
-from .includes.TempImage import TempImage
+from includes.Motor import Motor
+from includes.TempImage import TempImage
 
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
@@ -54,6 +54,7 @@ stop_cause_somebody_home = False
 def check_bt():
     global stop_cause_somebody_home, allow_macs
     while 1:
+        logging.debug("Checking BT devices")
         nearby_devices = discover_devices()
         checker = False
         for addr in nearby_devices:
@@ -64,8 +65,11 @@ def check_bt():
         stop_cause_somebody_home = False if checker is False else True
         if stop_cause_somebody_home:
             logging.debug("BT MAC detected")
-            motor = Motor()
-            motor.blick()
+            try:
+                motor = Motor()
+                motor.blick()
+            except RuntimeError:
+                logging.debug("Blick failed!")
             del motor
         time.sleep(60)
 
@@ -81,7 +85,7 @@ rawCapture.truncate(0)
 # for f in camera.capture_continuous(rawCapture, format="bgr"):
 for f in camera.capture_continuous(
         rawCapture, format="bgr", use_video_port=True):
-    logging.debug("YES")
+    logging.debug("Checking...")
     rawCapture.truncate(0)
 
     while stop_cause_somebody_home is True:
@@ -93,7 +97,7 @@ for f in camera.capture_continuous(
     # # resize the frame, convert it to grayscale, and blur it
     frame = f.array
     frame = imutils.resize(frame, width=conf["downscale_width"])
-    frame = imutils.rotate(frame, angle=180)
+    # frame = imutils.rotate(frame, angle=180)
 
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     gray = cv2.GaussianBlur(gray, (21, 21), 0)
@@ -152,7 +156,7 @@ for f in camera.capture_continuous(
             str(rect_halt) +
             " frame_half: " +
             str(frame_half))
-        if rect_halt < frame_half:
+        if rect_halt > frame_half:
             # turn left
             moved = True
             logging.debug("Turn left")
@@ -167,7 +171,7 @@ for f in camera.capture_continuous(
             else:
                 motor.one_step_left()
             del motor
-        elif rect_halt > frame_half:
+        elif rect_halt < frame_half:
             # turn right
             moved = True
             logging.debug("Turn right")

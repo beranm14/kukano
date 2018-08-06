@@ -1,0 +1,15 @@
+[Unit]
+Description=Raspberry cam to monitor the room
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python /home/pi/surveillance/main.py
+WorkingDirectory=/home/pi/surveillance/
+KillMode=process
+Restart=always
+Type=simple
+RestartSec=120
+
+[Install]
+WantedBy=multi-user.target
+Alias=kukano.service
