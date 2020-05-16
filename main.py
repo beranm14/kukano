@@ -1,19 +1,22 @@
-# import the necessary packages
-# from pyimagesearch.tempimage import TempImage
 from picamera.array import PiRGBArray
 from picamera import PiCamera
 import argparse
-# import warnings
 import datetime
 import imutils
 import json
 import time
 import cv2
+import random
 import logging
 from threading import Thread
 from bluetooth import discover_devices
 from includes.Motor import Motor
 from includes.TempImage import TempImage
+import audioop
+import pyaudio
+from includes.AudioFile import AudioFile
+from os import listdir
+from os.path import isfile, join
 
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
@@ -26,10 +29,6 @@ ap.add_argument(
     help="path to the JSON configuration file",
     default="config.json")
 args = vars(ap.parse_args())
-
-# filter warnings, load the configuration and initialize the Dropbox
-# client
-# warnings.filterwarnings("ignore")
 conf = json.load(open(args["conf"]))
 
 # initialize the camera and grab a reference to the raw camera capture
@@ -49,6 +48,36 @@ motionCounter = 0
 moved = False
 
 stop_cause_somebody_home = False
+stop_cause_there_is_silence = True
+do_play_warnings = False
+
+
+def check_sound():
+    global stop_cause_there_is_silence, conf
+    p = pyaudio.PyAudio()
+    noise_detected = 0
+    while 1:
+        stream = p.open(
+            format=pyaudio.paInt16,
+            channels=1,
+            rate=44100,
+            input=True,
+            input_device_index=2,
+            frames_per_buffer=4096
+        )
+        data = stream.read(4096)
+        rms = audioop.rms(data, 2)
+        stream.close()
+        if rms > conf['audio_threshold']:
+            logging.debug("{:02d} {}".format(rms, '#' * rms))
+            stop_cause_there_is_silence = False
+            noise_detected = time.time()
+        elif time.time() - noise_detected > 60 \
+                and stop_cause_there_is_silence is False \
+                and rms < conf['audio_threshold']:
+            noise_detected = 0
+            stop_cause_there_is_silence = True
+        time.sleep(0.1)
 
 
 def check_bt():
@@ -74,15 +103,37 @@ def check_bt():
         time.sleep(60)
 
 
-t = Thread(target=check_bt)
-t.start()
+def play_warnings():
+    global do_play_warnings
+    while 1:
+        if do_play_warnings:
+            onlyfiles = [
+                f for f in listdir(
+                    './warning_sounds/'
+                ) if isfile(join('./warning_sounds/', f))
+            ]
+            file = onlyfiles[
+                int(random.randrange(0, len(onlyfiles)))
+            ]
+            AudioFile('./warning_sounds/{0}'.format(file)).play().close()
+            do_play_warnings = False
+        time.sleep(10)
+
+
+t_check_bt = Thread(target=check_bt)
+t_check_bt.start()
+
+t_check_sound = Thread(target=check_sound)
+t_check_sound.start()
+
+t_play_warnings = Thread(target=play_warnings)
+t_play_warnings.start()
 
 logging.debug("Init ready")
 
 rawCapture.truncate(0)
 
 # capture frames from the camera
-# for f in camera.capture_continuous(rawCapture, format="bgr"):
 for f in camera.capture_continuous(
         rawCapture, format="bgr", use_video_port=True):
     logging.debug("Checking...")
@@ -152,10 +203,10 @@ for f in camera.capture_continuous(
         rect_halt = (2 * x_s + w_s) / 2
         logging.debug("Coords: " + str((x, y, w, h)))
         logging.debug(
-            "rect_halt: " +
-            str(rect_halt) +
-            " frame_half: " +
-            str(frame_half))
+            (
+                "rect_halt: {0} frame_half: {1}"
+            ).format(str(rect_halt), str(frame_half))
+        )
         if rect_halt > frame_half:
             # turn left
             moved = True
@@ -196,7 +247,14 @@ for f in camera.capture_continuous(
         frame, ts, (10, frame.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX,
         0.35, (0, 0, 255), 1)
     # check to see if the room is occupied
-    if text == "Occupied":
+    logging.debug(
+        "text_status: {text} stop_cause_somebody_home: {stop_cause_somebody_home} stop_cause_there_is_silence: {stop_cause_there_is_silence}".format(
+           text=text,
+           stop_cause_somebody_home=str(stop_cause_somebody_home),
+           stop_cause_there_is_silence=str(stop_cause_there_is_silence)
+        )
+    )
+    if text == "Occupied" and stop_cause_there_is_silence is False:
         # check to see if enough time has passed between uploads
         # increment the motion counter
         motionCounter += 1
@@ -211,6 +269,8 @@ for f in camera.capture_continuous(
 
             lastUploaded = timestamp
             motionCounter = 0
+
+            do_play_warnings = True
     # otherwise, the room is not occupied
     else:
         motionCounter = 0

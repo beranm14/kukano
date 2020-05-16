@@ -70,9 +70,9 @@ class Motor:
 
 
 motor = Motor()
-# motor.one_step_left()
+motor.one_step_left()
 # time.sleep(1)
-motor.one_step_right()
+# motor.one_step_right()
 # motor.one_step_right()
 # time.sleep(1)
 # motor.one_step_left()
