@@ -12,6 +12,7 @@ from threading import Thread
 from bluetooth import discover_devices
 from includes.Motor import Motor
 from includes.TempImage import TempImage
+from includes.ping import ping
 import audioop
 import pyaudio
 from includes.AudioFile import AudioFile
@@ -84,13 +85,11 @@ def check_bt():
     global stop_cause_somebody_home, allow_macs
     while 1:
         logging.debug("Checking BT devices")
-        nearby_devices = discover_devices()
         checker = False
-        for addr in nearby_devices:
-            if addr in allow_macs:
+        for addr in allow_macs:
+            if ping(addr):
+                logging.info("Detected " + str(addr))
                 checker = True
-                logging.debug("BT MAC detected " + str(addr))
-                break
         stop_cause_somebody_home = False if checker is False else True
         if stop_cause_somebody_home:
             logging.debug("BT MAC detected")
