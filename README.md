@@ -56,7 +56,12 @@ This is just a fun project, do not expect anything fancy, basic config should be
 	"resolution": [1920, 1080],
 	"fps": 16,
 	"min_area": 5000,
-	"allowed_devices" : ["04:B1:67:09:58:D1", "0C:98:38:00:60:B0"]
+	"allowed_devices" : ["04:B1:67:09:58:D1", "0C:98:38:00:60:B0"],
+    "aws_access_key_id" : "XXXXXXXXXXXXXXXXXXXX",
+   	"aws_secret_access_key" : "XXXXXXXXXXXXXXXXXXXX",
+   	"aws_bucket": "kukano",
+   	"backend_url": "https://apipath",
+   	"backend_api_key": "apikey"
 } 
 ```
 
@@ -65,6 +70,11 @@ This is just a fun project, do not expect anything fancy, basic config should be
  * min_motion_frames: frames with motion detected to be counted before picture is saved to a folder
  * delta_thresh, downscale_width, resolution, fps, min_area are all well explained at the [article](https://www.pyimagesearch.com/2015/06/01/home-surveillance-and-motion-detection-with-the-raspberry-pi-python-and-opencv/) I used
  * allowed_devices - those are bluetooth devices which should turn the cam off once they are online
+ * aws_access_key_id - key id from aws iam, if set, kukano will try to upload the picture to s3 bucket
+ * aws_secret_access_key - key secret from aws iam, if set, kukano will try to upload the picture to s3 bucket
+ * aws_bucket - bucket to push pictures to
+ * backend_url - url to backend, see project https://gitlab.com/kukano/backend
+ * backend_api_key - api key to backend, see project https://gitlab.com/kukano/backend
 
 ## Installation
  

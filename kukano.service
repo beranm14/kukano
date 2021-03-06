@@ -3,7 +3,7 @@ Description=Raspberry cam to monitor the room
 After=network.target
 
 [Service]
-ExecStart=/usr/bin/python /home/pi/surveillance/main.py
+ExecStart=/usr/bin/python3.5 /home/pi/surveillance/main.py
 WorkingDirectory=/home/pi/surveillance/
 KillMode=process
 Restart=always

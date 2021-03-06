@@ -11,17 +11,21 @@ import logging
 from threading import Thread
 from bluetooth import discover_devices
 from includes.Motor import Motor
+from includes.TakeAPicture import TakeAPicture
 from includes.TempImage import TempImage
 from includes.ping import ping
 import audioop
 import pyaudio
+import requests
 from includes.AudioFile import AudioFile
+import boto3
+
 from os import listdir
 from os.path import isfile, join
 
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 # construct the argument parser and parse the arguments
 ap = argparse.ArgumentParser()
@@ -248,9 +252,9 @@ for f in camera.capture_continuous(
     # check to see if the room is occupied
     logging.debug(
         "text_status: {text} stop_cause_somebody_home: {stop_cause_somebody_home} stop_cause_there_is_silence: {stop_cause_there_is_silence}".format(
-           text=text,
-           stop_cause_somebody_home=str(stop_cause_somebody_home),
-           stop_cause_there_is_silence=str(stop_cause_there_is_silence)
+            text=text,
+            stop_cause_somebody_home=str(stop_cause_somebody_home),
+            stop_cause_there_is_silence=str(stop_cause_there_is_silence)
         )
     )
     if text == "Occupied" and stop_cause_there_is_silence is False:
@@ -261,11 +265,44 @@ for f in camera.capture_continuous(
         # high enough
         if motionCounter >= conf["min_motion_frames"]:
             # write the image to temporary file
-            t = TempImage()
-            cv2.imwrite(t.path, frame)
+            descriptive_pic_path = TempImage()
+            full_pic_path = TempImage(ext="_full.jpg")
+            cv2.imwrite(descriptive_pic_path.path, frame)
+            TakeAPicture(full_pic_path.path, camera).shoot()
 
-            logging.debug("Writting " + t.path)
+            logging.debug("Writting " + descriptive_pic_path.path)
 
+            if 'aws_access_key_id' in conf and 'aws_secret_access_key' in conf and 'aws_bucket' in conf:
+                s3 = boto3.client(
+                    's3',
+                    aws_access_key_id=conf['aws_access_key_id'],
+                    aws_secret_access_key=conf['aws_secret_access_key']
+                )
+                for p in [descriptive_pic_path, full_pic_path]:
+                    s3.upload_file(p.path, conf['aws_bucket'], p.key)
+                    url = s3.generate_presigned_url(
+                        ClientMethod='get_object',
+                        Params={
+                            'Bucket': 'bucket-name',
+                            'Key': 'key-name'
+                        },
+                        ExpiresIn=604800
+                    )
+                    p.presigned_url = url
+                if 'backend_url' in conf and 'backend_api_key' in conf:
+                    r = requests.post(
+                        conf['backend_url'] + "/incident/",
+                        headers={
+                            "x-api-Key": conf['backend_api_key'],
+                            'Content-type': 'application/json'
+                        },
+                        json={
+                            'timestamp': datetime.datetime.now().isoformat(),
+                            'picture': descriptive_pic_path.presigned_url,
+                            'full_picture': full_pic_path.presigned_url,
+                        }
+                    )
+                logging.debug("Submitted to backend")
             lastUploaded = timestamp
             motionCounter = 0
 

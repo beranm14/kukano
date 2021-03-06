@@ -10,15 +10,15 @@ class Motor:
         self.coil_B_2_pin = 26
         GPIO.setmode(GPIO.BCM)
         self.StepCount = 8
-        self.Seq = range(0, self.StepCount)
-        self.Seq[0] = [1, 0, 0, 1]
-        self.Seq[1] = [1, 0, 0, 0]
-        self.Seq[2] = [1, 1, 0, 0]
-        self.Seq[3] = [0, 1, 0, 0]
-        self.Seq[4] = [0, 1, 1, 0]
-        self.Seq[5] = [0, 0, 1, 0]
-        self.Seq[6] = [0, 0, 1, 1]
-        self.Seq[7] = [0, 0, 0, 1]
+        self.Seq = []
+        self.Seq.append([1, 0, 0, 1])
+        self.Seq.append([1, 0, 0, 0])
+        self.Seq.append([1, 1, 0, 0])
+        self.Seq.append([0, 1, 0, 0])
+        self.Seq.append([0, 1, 1, 0])
+        self.Seq.append([0, 0, 1, 0])
+        self.Seq.append([0, 0, 1, 1])
+        self.Seq.append([0, 0, 0, 1])
         GPIO.setup(
             self.coil_A_1_pin,
             GPIO.OUT)
