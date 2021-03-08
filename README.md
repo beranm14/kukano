@@ -60,6 +60,7 @@ This is just a fun project, do not expect anything fancy, basic config should be
     "aws_access_key_id" : "XXXXXXXXXXXXXXXXXXXX",
    	"aws_secret_access_key" : "XXXXXXXXXXXXXXXXXXXX",
    	"aws_bucket": "kukano",
+   	"aws_region": "",
    	"backend_url": "https://apipath",
    	"backend_api_key": "apikey"
 } 
@@ -73,6 +74,7 @@ This is just a fun project, do not expect anything fancy, basic config should be
  * aws_access_key_id - key id from aws iam, if set, kukano will try to upload the picture to s3 bucket
  * aws_secret_access_key - key secret from aws iam, if set, kukano will try to upload the picture to s3 bucket
  * aws_bucket - bucket to push pictures to
+ * aws_region - aws default region
  * backend_url - url to backend, see project https://gitlab.com/kukano/backend
  * backend_api_key - api key to backend, see project https://gitlab.com/kukano/backend
 

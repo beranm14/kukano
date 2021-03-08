@@ -19,6 +19,8 @@ import pyaudio
 import requests
 from includes.AudioFile import AudioFile
 import boto3
+from botocore.client import Config
+import subprocess
 
 from os import listdir
 from os.path import isfile, join
@@ -272,19 +274,21 @@ for f in camera.capture_continuous(
 
             logging.debug("Writting " + descriptive_pic_path.path)
 
-            if 'aws_access_key_id' in conf and 'aws_secret_access_key' in conf and 'aws_bucket' in conf:
+            if 'aws_access_key_id' in conf and 'aws_secret_access_key' in conf and 'aws_region' in conf and 'aws_bucket' in conf:
                 s3 = boto3.client(
-                    's3',
+                    's3', conf['aws_region'],
                     aws_access_key_id=conf['aws_access_key_id'],
-                    aws_secret_access_key=conf['aws_secret_access_key']
+                    # endpoint_url="https://s3.{region}.amazonaws.com".format(region=conf['aws_region']),
+                    aws_secret_access_key=conf['aws_secret_access_key'],
+                    # config=Config(s3={'addressing_style': 'virtual'})
                 )
                 for p in [descriptive_pic_path, full_pic_path]:
                     s3.upload_file(p.path, conf['aws_bucket'], p.key)
                     url = s3.generate_presigned_url(
                         ClientMethod='get_object',
                         Params={
-                            'Bucket': 'bucket-name',
-                            'Key': 'key-name'
+                            'Bucket': conf['aws_bucket'],
+                            'Key': p.key
                         },
                         ExpiresIn=604800
                     )
@@ -303,6 +307,10 @@ for f in camera.capture_continuous(
                         }
                     )
                 logging.debug("Submitted to backend")
+            if isfile("./run_after_notification_script.sh"):
+                subprocess.call(
+                    "./run_after_notification_script.sh", shell=True
+                )
             lastUploaded = timestamp
             motionCounter = 0
 
