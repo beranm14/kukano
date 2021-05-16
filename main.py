@@ -63,15 +63,29 @@ def check_sound():
     global stop_cause_there_is_silence, conf
     p = pyaudio.PyAudio()
     noise_detected = 0
+    stream = None
+    last_working_device = 2
     while 1:
-        stream = p.open(
-            format=pyaudio.paInt16,
-            channels=1,
-            rate=44100,
-            input=True,
-            input_device_index=2,
-            frames_per_buffer=4096
-        )
+        print(last_working_device)
+        for i in [last_working_device, 1]:
+            try:
+                stream = p.open(
+                    format=pyaudio.paInt16,
+                    channels=1,
+                    rate=44100,
+                    input=True,
+                    input_device_index=i,
+                    frames_per_buffer=4096
+                )
+            except OSError:
+                pass
+            else:
+                last_working_device = i
+        if stream is None:
+            logging.info("Did not detect microphone, setting audio detect as true")
+            stop_cause_there_is_silence = True
+            time.sleep(10)
+            continue
         data = stream.read(4096)
         rms = audioop.rms(data, 2)
         stream.close()
