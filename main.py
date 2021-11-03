@@ -25,6 +25,25 @@ import subprocess
 from os import listdir
 from os.path import isfile, join
 
+from ctypes import *
+
+ERROR_HANDLER_FUNC = CFUNCTYPE(None, c_char_p, c_int, c_char_p, c_int, c_char_p)
+def py_error_handler(filename, line, function, err, fmt):
+    pass
+c_error_handler = ERROR_HANDLER_FUNC(py_error_handler)
+
+asound = cdll.LoadLibrary('libasound.so')
+# Set error handler
+asound.snd_lib_error_set_handler(c_error_handler)
+# Initialize PyAudio
+p = pyaudio.PyAudio()
+p.terminate()
+
+# Reset to default error handler
+asound.snd_lib_error_set_handler(None)
+# Re-initialize
+p = pyaudio.PyAudio()
+p.terminate()
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 logging.basicConfig(level=logging.INFO)
@@ -58,29 +77,40 @@ stop_cause_somebody_home = False
 stop_cause_there_is_silence = True
 do_play_warnings = False
 
+last_working_audio_device = None
+
 
 def check_sound():
-    global stop_cause_there_is_silence, conf
+    global stop_cause_there_is_silence, stop_cause_somebody_home, conf, last_working_audio_device
     p = pyaudio.PyAudio()
     noise_detected = 0
     stream = None
-    last_working_device = 2
     while 1:
-        print(last_working_device)
-        for i in [last_working_device, 1]:
-            try:
-                stream = p.open(
-                    format=pyaudio.paInt16,
-                    channels=1,
-                    rate=44100,
-                    input=True,
-                    input_device_index=i,
-                    frames_per_buffer=4096
-                )
-            except OSError:
-                pass
-            else:
-                last_working_device = i
+        if last_working_audio_device is None:
+            for i in [2, 1]:
+                try:
+                    stream = p.open(
+                        format=pyaudio.paInt16,
+                        channels=1,
+                        rate=44100,
+                        input=True,
+                        input_device_index=i,
+                        frames_per_buffer=4096
+                    )
+                except OSError:
+                    logging.debug(f"Fail to set input at {i}")
+                    pass
+                else:
+                    last_working_audio_device = i
+        else:
+            stream = p.open(
+                format=pyaudio.paInt16,
+                channels=1,
+                rate=44100,
+                input=True,
+                input_device_index=last_working_audio_device,
+                frames_per_buffer=4096
+            )
         if stream is None:
             logging.info("Did not detect microphone, setting audio detect as true")
             stop_cause_there_is_silence = True
@@ -98,6 +128,8 @@ def check_sound():
                 and rms < conf['audio_threshold']:
             noise_detected = 0
             stop_cause_there_is_silence = True
+        while stop_cause_somebody_home is True:
+            time.sleep(10)
         time.sleep(0.1)
 
 
@@ -196,7 +228,7 @@ for f in camera.capture_continuous(
     cnts = cv2.findContours(
         thresh.copy(), cv2.RETR_EXTERNAL,
         cv2.CHAIN_APPROX_SIMPLE)
-    cnts = cnts[0] if imutils.is_cv2() else cnts[1]
+    cnts = cnts[1] if imutils.is_cv2() else cnts[0]
 
     if moved is True:
         moved = False

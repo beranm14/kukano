@@ -3,9 +3,11 @@ Description=Raspberry cam to monitor the room
 After=network.target
 
 [Service]
-ExecStart=/usr/bin/python3.5 /home/pi/surveillance/main.py
+ExecStart=/bin/bash /home/pi/surveillance/systemd_luncher.sh
 WorkingDirectory=/home/pi/surveillance/
 KillMode=process
+Environment="PA_ALSA_PLUGHW=1"
+Environment="PULSE_LATENCY_MSEC=30" 
 Restart=always
 Type=simple
 RestartSec=120
@@ -13,3 +15,4 @@ RestartSec=120
 [Install]
 WantedBy=multi-user.target
 Alias=kukano.service
+
